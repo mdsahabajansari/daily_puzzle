@@ -120,4 +120,3 @@ The `vercel.json` is pre-configured with SPA rewrites and cache headers.
 ## License
 
 MIT
-# daily_puzzle
