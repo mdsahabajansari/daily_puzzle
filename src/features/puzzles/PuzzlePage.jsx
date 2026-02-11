@@ -159,10 +159,10 @@ export default function PuzzlePage() {
                             key={type}
                             onClick={() => { setActiveType(type); setResult(null); }}
                             className={`relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${isActive
-                                    ? 'text-white'
-                                    : isCompleted
-                                        ? 'text-emerald-400 hover:text-emerald-300'
-                                        : 'text-slate-500 hover:text-slate-300'
+                                ? 'text-white'
+                                : isCompleted
+                                    ? 'text-emerald-400 hover:text-emerald-300'
+                                    : 'text-slate-500 hover:text-slate-300'
                                 }`}
                         >
                             {isActive && (
@@ -188,21 +188,9 @@ export default function PuzzlePage() {
                         exit={{ opacity: 0, y: -20 }}
                     >
                         <ScoreDisplay
-                            score={result.score}
-                            maxScore={activePuzzle?.maxScore || 200}
-                            timeTaken={result.timeTaken}
-                            hintsUsed={result.hintsUsed}
-                            correct={result.correct}
+                            result={result}
+                            onNext={handleNextPuzzle}
                         />
-                        <motion.button
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.5 }}
-                            onClick={handleNextPuzzle}
-                            className="w-full mt-4 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 font-semibold transition-colors"
-                        >
-                            {allCompleted ? '📊 View Stats' : '➡️ Next Puzzle'}
-                        </motion.button>
                     </motion.div>
                 ) : activePuzzle ? (
                     <motion.div

@@ -2,17 +2,24 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 export default function ScoreDisplay({ result, onNext }) {
+    // Defensive check to prevent black screen if result is missing/malformed
+    if (!result) return (
+        <div className="glass p-10 text-center text-slate-500 italic">
+            Retrieving performance metrics...
+        </div>
+    );
+
     const isS = result.rating === 'S';
 
     return (
         <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             className="glass overflow-hidden"
         >
             {/* Rating Banner */}
-            <div className={`relative h-40 flex items-center justify-center overflow-hidden bg-brand-600`}>
-                <div className="absolute inset-0 bg-gradient-to-br from-brand-500 to-purple-600" />
+            <div className={`relative h-40 flex items-center justify-center overflow-hidden ${result.correct ? 'bg-brand-600' : 'bg-slate-800'}`}>
+                <div className="absolute inset-0 bg-gradient-to-br from-brand-500 to-purple-600 opacity-80" />
                 <motion.div
                     initial={{ scale: 0, rotate: -20 }}
                     animate={{ scale: 1, rotate: 0 }}
@@ -20,10 +27,10 @@ export default function ScoreDisplay({ result, onNext }) {
                     className="relative z-10 flex flex-col items-center"
                 >
                     <span className={`text-8xl font-black drop-shadow-2xl ${isS ? 'text-yellow-300 animate-pulse' : 'text-white'}`}>
-                        {result.rating}
+                        {result.rating || (result.correct ? 'A' : 'F')}
                     </span>
                     <div className="absolute -top-6 -right-6 text-3xl">
-                        {isS ? '👑' : '✨'}
+                        {isS ? '👑' : result.correct ? '✨' : '❌'}
                     </div>
                 </motion.div>
 
@@ -31,12 +38,7 @@ export default function ScoreDisplay({ result, onNext }) {
                 <motion.div
                     animate={{ scale: [1, 1.2, 1], rotate: 360 }}
                     transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-                    className="absolute -bottom-20 -left-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"
-                />
-                <motion.div
-                    animate={{ scale: [1, 1.3, 1], rotate: -360 }}
-                    transition={{ duration: 15, repeat: Infinity, ease: 'linear' }}
-                    className="absolute -top-20 -right-20 w-64 h-64 bg-brand-400/20 rounded-full blur-3xl"
+                    className="absolute -bottom-20 -left-20 w-64 h-64 bg-white/10 rounded-full blur-3xl opacity-30"
                 />
             </div>
 
@@ -49,15 +51,15 @@ export default function ScoreDisplay({ result, onNext }) {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.5 }}
-                        className="text-6xl font-black text-gradient"
+                        className={`text-6xl font-black ${result.correct ? 'text-gradient' : 'text-slate-500'}`}
                     >
-                        +{result.score}
+                        {result.correct ? `+${result.score}` : '0 PTS'}
                     </motion.div>
-                    <p className="text-slate-400 text-sm italic mt-2 px-4 leading-relaxed">"{result.feedback}"</p>
+                    <p className="text-slate-400 text-sm italic mt-2 px-4 leading-relaxed">"{result.feedback || 'Try again to improve your score!'}"</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
-                    <StatCard label="Time" value={`${result.timeTaken}s`} icon="⏱️" />
+                    <StatCard label="Time" value={`${result.timeTaken || 0}s`} icon="⏱️" />
                     <StatCard label="Hints" value={result.hintsUsed > 0 ? `${result.hintsUsed} Used` : 'Zero'} icon="💡" />
                 </div>
 
@@ -67,7 +69,7 @@ export default function ScoreDisplay({ result, onNext }) {
                     onClick={onNext}
                     className="btn-primary w-full flex items-center justify-center gap-4 text-xl"
                 >
-                    <span>NEXT CHALLENGE</span>
+                    <span>CONTINUE</span>
                     <span className="opacity-70">→</span>
                 </motion.button>
             </div>

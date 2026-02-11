@@ -1,10 +1,11 @@
+import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { signInWithGoogle, signInWithTruecaller, signOut } from '@/services/authService';
 import { useAuthStore } from './AuthProvider';
 
 export default function LoginPage() {
-    const { user, loading } = useAuthStore();
+    const { user, loading } = useAuthStore() || { user: null, loading: true };
     const navigate = useNavigate();
 
     const handleGoogleLogin = async () => {
@@ -17,14 +18,22 @@ export default function LoginPage() {
     };
 
     const handleTruecallerLogin = async () => {
-        const user = await signInWithTruecaller();
-        if (user) {
-            navigate('/');
+        try {
+            const userResult = await signInWithTruecaller();
+            if (userResult) {
+                navigate('/');
+            }
+        } catch (error) {
+            console.error('Truecaller sign-in failed:', error);
         }
     };
 
     const handleLogout = async () => {
-        await signOut();
+        try {
+            await signOut();
+        } catch (error) {
+            console.error('Sign out failed:', error);
+        }
     };
 
     if (loading) {
@@ -37,6 +46,9 @@ export default function LoginPage() {
                 >
                     🧩
                 </motion.div>
+                <div className="text-slate-500 font-mono text-[10px] uppercase tracking-widest animate-pulse">
+                    Authenticating...
+                </div>
             </div>
         );
     }
@@ -69,7 +81,7 @@ export default function LoginPage() {
                     </div>
 
                     <div>
-                        <h2 className="text-2xl font-black tracking-tight">{user.displayName || 'Elite Player'}</h2>
+                        <h2 className="text-2xl font-black tracking-tight text-white">{user.displayName || 'Elite Player'}</h2>
                         <p className="text-slate-500 font-mono text-[10px] uppercase tracking-widest mt-1">{user.email}</p>
                     </div>
 
