@@ -94,7 +94,7 @@ export default function StatsPage() {
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-2 md:grid-cols-4 gap-4"
+                className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4"
             >
                 <StatCard icon="🔥" label="Current Streak" value={safeCurrentStreak} unit="Days" />
                 <StatCard icon="👑" label="Peak Record" value={safeLongestStreak} unit="Days" />
@@ -102,14 +102,14 @@ export default function StatsPage() {
                 <StatCard icon="⭐️" label="Global Score" value={safeTotalScore.toLocaleString()} unit="XP" />
             </motion.div>
 
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid lg:grid-cols-3 gap-6">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.2 }}
-                    className="md:col-span-1 glass p-8 space-y-6"
+                    className="lg:col-span-1 glass p-6 md:p-8 space-y-6"
                 >
-                    <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500">Metric Breakdown</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Metric Breakdown</h3>
                     <div className="space-y-4">
                         <SmallStat label="Active Days" value={daysPlayed} />
                         <SmallStat label="Avg Load/Day" value={daysPlayed > 0 ? (totalPuzzles / daysPlayed).toFixed(1) : '0.0'} />
@@ -122,14 +122,14 @@ export default function StatsPage() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.3 }}
-                    className="md:col-span-2 space-y-6"
+                    className="lg:col-span-2 space-y-6"
                 >
-                    <div className="glass p-8 overflow-hidden">
-                        <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-6">Activity Heatmap</h3>
+                    <div className="glass p-6 md:p-8 overflow-hidden">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-6">Activity Heatmap</h3>
                         <HeatmapContainer />
                     </div>
 
-                    <div className="glass p-8 overflow-hidden">
+                    <div className="glass p-6 md:p-8 overflow-hidden">
                         <BadgeList />
                     </div>
                 </motion.div>
@@ -140,13 +140,13 @@ export default function StatsPage() {
 
 function StatCard({ icon, label, value, unit }) {
     return (
-        <div className="glass-hover p-6 border-b-4 border-b-brand-600/50">
-            <div className="text-2xl mb-3">{icon}</div>
+        <div className="glass-hover p-4 md:p-6 border-b-4 border-b-brand-600/50">
+            <div className="text-xl md:text-2xl mb-2 md:mb-3">{icon}</div>
             <div className="space-y-1">
-                <div className="text-sm font-black text-slate-400 uppercase tracking-tighter">{label}</div>
+                <div className="text-[10px] md:text-xs font-black text-slate-400 border-b border-white/5 pb-1 mb-1 uppercase tracking-tighter">{label}</div>
                 <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-white">{value}</span>
-                    <span className="text-[10px] font-bold text-slate-600 uppercase">{unit}</span>
+                    <span className="text-xl md:text-2xl font-black text-white">{value}</span>
+                    <span className="text-[9px] md:text-[10px] font-bold text-slate-600 uppercase">{unit}</span>
                 </div>
             </div>
         </div>

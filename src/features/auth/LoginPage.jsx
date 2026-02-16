@@ -17,7 +17,8 @@ export default function LoginPage() {
         setSigningIn(true);
         try {
             await signInWithGoogle();
-            navigate('/');
+            // Global AuthProvider handles state sync. 
+            // Only navigate if we aren't already where we need to be.
         } catch (err) {
             console.error('Google sign-in failed:', err);
             // Provide user-friendly error messages

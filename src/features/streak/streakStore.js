@@ -17,6 +17,7 @@ export const useStreakStore = create((set, get) => ({
     totalScore: 0,
     activityMap: {}, // 'YYYY-MM-DD' -> { solved, score, timeTaken... }
     isLoading: true,
+    isInitialized: false,
     initError: null,
 
     /**
@@ -26,7 +27,7 @@ export const useStreakStore = create((set, get) => ({
     initialize: async () => {
         // Prevent double-init when already loaded
         const state = get();
-        if (!state.isLoading && Object.keys(state.activityMap).length > 0) return;
+        if (state.isInitialized) return;
 
         set({ isLoading: true, initError: null });
         try {
@@ -91,6 +92,7 @@ export const useStreakStore = create((set, get) => ({
                 activityMap,
                 totalScore,
                 isLoading: false,
+                isInitialized: true,
                 initError: null,
             });
         } catch (error) {

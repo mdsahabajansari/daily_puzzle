@@ -10,15 +10,19 @@ export default function HeatmapGrid({ intensityData }) {
     const weeks = useMemo(() => generateDateGrid(365), []);
 
     return (
-        <div className="flex gap-1 overflow-x-auto pb-2 custom-scrollbar">
-            {weeks.map((week, index) => (
-                <HeatmapColumn
-                    key={index}
-                    weekData={week}
-                    colIndex={index}
-                    intensityData={intensityData}
-                />
-            ))}
+        <div className="relative">
+            <div className="flex gap-1 overflow-x-auto pb-4 custom-scrollbar scroll-smooth">
+                {weeks.map((week, index) => (
+                    <HeatmapColumn
+                        key={index}
+                        weekData={week}
+                        colIndex={index}
+                        intensityData={intensityData}
+                    />
+                ))}
+            </div>
+            {/* Fade indicator for scroll */}
+            <div className="absolute top-0 right-0 bottom-4 w-12 bg-gradient-to-l from-slate-950 to-transparent pointer-events-none" />
         </div>
     );
 }
