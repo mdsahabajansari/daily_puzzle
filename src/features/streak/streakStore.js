@@ -1,137 +1,169 @@
 /**
  * streakStore.js — Streak tracking with Zustand
+ *
+ * Reads from BOTH the legacy 'streaks' store and the new 'dailyActivity' store
+ * so existing user data is not lost after the migration.
  */
 
 import { create } from 'zustand';
-import { streakStorage } from '@/storage/indexedDB';
-import { getTodayDateStr } from '@/engine/generator';
+import { activityStorage, streakStorage } from '@/storage/indexedDB';
+import { getTodayISO } from './utils/dateUtils';
+import { calculateStreak, calculateLongestStreak } from './utils/streakLogic';
 
 export const useStreakStore = create((set, get) => ({
     currentStreak: 0,
     longestStreak: 0,
     lastPlayedDate: null,
-    history: {},
     totalScore: 0,
+    activityMap: {}, // 'YYYY-MM-DD' -> { solved, score, timeTaken... }
+    isLoading: true,
+    initError: null,
 
     /**
      * Load streak data from IndexedDB.
+     * Merges legacy 'streaks' data with new 'dailyActivity' data.
      */
     initialize: async () => {
-        const entries = await streakStorage.getAll();
-        const history = {};
-        let totalScore = 0;
+        // Prevent double-init when already loaded
+        const state = get();
+        if (!state.isLoading && Object.keys(state.activityMap).length > 0) return;
 
-        for (const entry of entries) {
-            history[entry.date] = entry.puzzlesCompleted;
-            totalScore += entry.totalScore;
-        }
-
-        const today = getTodayDateStr();
-        let streak = 0;
-        let checkDate = new Date(today);
-
-        while (true) {
-            const dateStr = formatDate(checkDate);
-            if (history[dateStr] && history[dateStr] > 0) {
-                streak++;
-                checkDate.setDate(checkDate.getDate() - 1);
-            } else {
-                break;
-            }
-        }
-
-        let longestStreak = streak;
-        let tempStreak = 0;
-        const allDates = Object.keys(history).sort();
-
-        for (let i = 0; i < allDates.length; i++) {
-            if (history[allDates[i]] > 0) {
-                tempStreak++;
-                longestStreak = Math.max(longestStreak, tempStreak);
-            } else {
-                tempStreak = 0;
+        set({ isLoading: true, initError: null });
+        try {
+            // ------- Read new dailyActivity store -------
+            let newEntries = [];
+            try {
+                newEntries = await activityStorage.getAll();
+            } catch (e) {
+                console.warn('dailyActivity store read failed (may not exist yet):', e);
             }
 
-            if (i < allDates.length - 1) {
-                const current = new Date(allDates[i]);
-                const next = new Date(allDates[i + 1]);
-                const diffDays = (next.getTime() - current.getTime()) / 86400000;
-                if (diffDays > 1) {
-                    tempStreak = 0;
+            // ------- Read legacy streaks store -------
+            let legacyEntries = [];
+            try {
+                legacyEntries = await streakStorage.getAll();
+            } catch (e) {
+                console.warn('streaks store read failed:', e);
+            }
+
+            // ------- Merge into activityMap -------
+            const activityMap = {};
+            let totalScore = 0;
+
+            // Legacy entries first (they'll be overwritten by newer data if overlapping)
+            for (const entry of legacyEntries) {
+                if (entry.date && entry.puzzlesCompleted > 0) {
+                    activityMap[entry.date] = {
+                        date: entry.date,
+                        solved: true,
+                        score: entry.totalScore || 0,
+                        timeTaken: 0,
+                        difficulty: 1,
+                        synced: false,
+                    };
+                    totalScore += entry.totalScore || 0;
                 }
             }
+
+            // New entries overwrite legacy
+            for (const entry of newEntries) {
+                activityMap[entry.date] = entry;
+                // Recalculate total to avoid double-counting
+            }
+
+            // Recalculate totalScore from merged map
+            totalScore = 0;
+            for (const entry of Object.values(activityMap)) {
+                if (entry.score) totalScore += entry.score;
+            }
+
+            const currentStreak = calculateStreak(activityMap);
+            const longestStreak = calculateLongestStreak(activityMap);
+
+            // Find last played date
+            const dates = Object.keys(activityMap).sort();
+            const lastPlayedDate = dates.length > 0 ? dates[dates.length - 1] : null;
+
+            set({
+                currentStreak,
+                longestStreak,
+                lastPlayedDate,
+                activityMap,
+                totalScore,
+                isLoading: false,
+                initError: null,
+            });
+        } catch (error) {
+            console.error('Failed to initialize streak store:', error);
+            set({ isLoading: false, initError: error.message });
         }
-
-        const lastPlayedDate = allDates.length > 0 ? allDates[allDates.length - 1] : null;
-
-        set({ currentStreak: streak, longestStreak, lastPlayedDate, history, totalScore });
     },
 
     /**
      * Record a puzzle completion for today.
+     * @param {Object} diff - { score, timeTaken, difficulty }
      */
-    recordCompletion: async (score) => {
-        const today = getTodayDateStr();
+    recordCompletion: async ({ score, timeTaken, difficulty }) => {
+        const today = getTodayISO();
         const state = get();
 
-        const newCount = (state.history[today] || 0) + 1;
-        const newHistory = { ...state.history, [today]: newCount };
+        // Default entry structure
+        const entry = {
+            date: today,
+            solved: true,
+            score,
+            timeTaken,
+            difficulty,
+            synced: false,
+            timestamp: Date.now(),
+        };
 
-        let newStreak = state.currentStreak;
-        if (state.lastPlayedDate !== today) {
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = formatDate(yesterday);
-
-            if (state.lastPlayedDate === yesterdayStr || state.currentStreak === 0) {
-                newStreak = state.currentStreak + 1;
-            } else {
-                newStreak = 1;
-            }
-        }
-
+        // Optimistic update
+        const newMap = { ...state.activityMap, [today]: entry };
+        const newStreak = calculateStreak(newMap);
         const newLongest = Math.max(state.longestStreak, newStreak);
         const newTotal = state.totalScore + score;
 
-        const existing = await streakStorage.get(today);
-        await streakStorage.put({
-            date: today,
-            puzzlesCompleted: newCount,
-            totalScore: (existing?.totalScore || 0) + score,
-        });
-
         set({
+            activityMap: newMap,
             currentStreak: newStreak,
             longestStreak: newLongest,
-            lastPlayedDate: today,
-            history: newHistory,
             totalScore: newTotal,
+            lastPlayedDate: today,
         });
+
+        // Async persist to BOTH stores for backward compat
+        try {
+            await activityStorage.put(entry);
+            await streakStorage.put({
+                date: today,
+                puzzlesCompleted: 1,
+                totalScore: score,
+            });
+        } catch (e) {
+            console.error('Failed to persist completion:', e);
+        }
     },
 
     /**
-     * Generate heatmap data for the last N days.
+     * Get processed heatmap data for rendering
+     * @returns {Object} Map of date -> intensity/level (0-4)
      */
-    getHeatmapData: (days) => {
-        const state = get();
-        const data = [];
-        const now = new Date();
+    getHeatmapIntensity: () => {
+        const { activityMap } = get();
+        const intensityMap = {};
 
-        for (let i = days - 1; i >= 0; i--) {
-            const d = new Date(now);
-            d.setDate(d.getDate() - i);
-            const dateStr = formatDate(d);
-            data.push({
-                date: dateStr,
-                count: state.history[dateStr] || 0,
-            });
-        }
+        Object.values(activityMap).forEach((entry) => {
+            if (!entry.solved) return;
 
-        return data;
+            let level = 1;
+            if (entry.score > 300) level = 4;
+            else if (entry.score > 200) level = 3;
+            else if (entry.score > 100) level = 2;
+
+            intensityMap[entry.date] = level;
+        });
+
+        return intensityMap;
     },
 }));
-
-/** Format a Date as YYYY-MM-DD */
-function formatDate(date) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}

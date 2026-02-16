@@ -18,11 +18,25 @@ export const useAuthStore = create((set) => ({
 
 /**
  * AuthProvider — wraps the app to initialize auth listening.
+ * When a user logs in, pull their cloud data into local IndexedDB.
  */
 export function AuthProvider({ children }) {
     useEffect(() => {
-        const unsubscribe = onAuthChange((user) => {
+        const unsubscribe = onAuthChange(async (user) => {
             useAuthStore.getState().setUser(user);
+
+            // On login: pull cloud data into local IndexedDB
+            if (user) {
+                try {
+                    const { pullFromCloud } = await import('@/services/sync');
+                    const result = await pullFromCloud();
+                    if (result.count > 0) {
+                        console.log(`[Auth] Restored ${result.count} entries from cloud`);
+                    }
+                } catch (e) {
+                    console.warn('[Auth] Cloud pull skipped:', e.message);
+                }
+            }
         });
 
         return unsubscribe;

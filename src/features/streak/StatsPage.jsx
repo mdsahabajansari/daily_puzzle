@@ -1,34 +1,93 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import StreakHeatmap from './StreakHeatmap';
+import HeatmapContainer from './components/HeatmapContainer';
+import BadgeList from '@/features/achievements/components/BadgeList';
 import { useStreakStore } from './streakStore';
+import { getUnsyncedCount } from '@/services/sync';
+import { useState } from 'react';
 
 export default function StatsPage() {
-    const { initialize, currentStreak, longestStreak, totalScore, history } = useStreakStore();
+    const initialize = useStreakStore((s) => s.initialize);
+    const isLoading = useStreakStore((s) => s.isLoading);
+    const initError = useStreakStore((s) => s.initError);
+    const currentStreak = useStreakStore((s) => s.currentStreak);
+    const longestStreak = useStreakStore((s) => s.longestStreak);
+    const totalScore = useStreakStore((s) => s.totalScore);
+    const activityMap = useStreakStore((s) => s.activityMap);
+    const [unsyncedCount, setUnsyncedCount] = useState(0);
 
     useEffect(() => {
-        const loadStats = async () => {
-            try {
-                await initialize();
-            } catch (err) {
-                console.error('Failed to initialize stats:', err);
-            }
-        };
-        loadStats();
-    }, [initialize]);
+        async function checkSync() {
+            const count = await getUnsyncedCount();
+            setUnsyncedCount(count);
+        }
+        checkSync();
+        // Check again every 10 seconds or when activityMap changes
+        const interval = setInterval(checkSync, 10000);
+        return () => clearInterval(interval);
+    }, [activityMap]);
 
-    // Safety check for history
-    const safeHistory = history || {};
-    const daysPlayed = Object.values(safeHistory).filter((count) => count > 0).length;
-    const totalPuzzles = Object.values(safeHistory).reduce((sum, count) => sum + count, 0);
+    useEffect(() => {
+        initialize();
+    }, []); // Run once on mount — initialize is stable (Zustand)
+
+    // Loading state
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                    className="text-6xl"
+                >
+                    📊
+                </motion.div>
+                <div className="text-slate-500 font-mono text-[10px] uppercase tracking-widest animate-pulse">
+                    Loading neural performance data...
+                </div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (initError) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <div className="text-5xl">⚠️</div>
+                <p className="text-red-400 text-sm">Failed to load stats: {initError}</p>
+                <button
+                    onClick={() => initialize()}
+                    className="btn-primary text-xs px-6 py-2"
+                >
+                    Retry
+                </button>
+            </div>
+        );
+    }
+
+    // Robust fallbacks for all data points
+    const safeActivityMap = activityMap || {};
+    const safeCurrentStreak = currentStreak || 0;
+    const safeLongestStreak = longestStreak || 0;
+    const safeTotalScore = totalScore || 0;
+
+    const activityValues = Object.values(safeActivityMap).filter((entry) => entry.solved);
+    const daysPlayed = activityValues.length;
+    const totalPuzzles = daysPlayed;
+
+    // Sync rate foundation
+    const syncedCount = activityValues.filter((a) => a.synced).length;
+    const syncRate = daysPlayed > 0 ? Math.round((syncedCount / daysPlayed) * 100) : 100;
 
     return (
         <div className="space-y-10 max-w-4xl mx-auto pb-12">
             <header>
-                <h2 className="text-3xl font-black tracking-tight text-white">PERFORMANCE ANALYTICS</h2>
+                <h2 className="text-3xl font-black tracking-tight text-white uppercase">Neural Performance Log</h2>
                 <div className="flex items-center gap-3 mt-1">
-                    <span className="w-2 h-2 bg-brand-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(79,70,229,0.5)]" />
-                    <p className="text-slate-400 font-mono text-[10px] uppercase tracking-widest">Real-time cognitive metrics synced</p>
+                    <span className={`w-2 h-2 rounded-full shadow-[0_0_8px_rgba(79,70,229,0.5)] ${unsyncedCount > 0 ? 'bg-amber-400 animate-bounce' : 'bg-brand-500 animate-pulse'}`} />
+                    <p className="text-slate-400 font-mono text-[10px] uppercase tracking-widest">
+                        {unsyncedCount > 0 ? `${unsyncedCount} Neural Updates Pending Sync...` : 'Cloud Protected • Cognitive metrics synchronized'}
+                    </p>
                 </div>
             </header>
 
@@ -37,15 +96,15 @@ export default function StatsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="grid grid-cols-2 md:grid-cols-4 gap-4"
             >
-                <StatCard icon="🔥" label="Current Streak" value={currentStreak || 0} unit="Days" />
-                <StatCard icon="👑" label="Peak Record" value={longestStreak || 0} unit="Days" />
-                <StatCard icon="✅" label="Total Puzzles" value={totalPuzzles || 0} unit="Units" />
-                <StatCard icon="⭐️" label="Global Score" value={(totalScore || 0).toLocaleString()} unit="XP" />
+                <StatCard icon="🔥" label="Current Streak" value={safeCurrentStreak} unit="Days" />
+                <StatCard icon="👑" label="Peak Record" value={safeLongestStreak} unit="Days" />
+                <StatCard icon="✅" label="Total Puzzles" value={totalPuzzles} unit="Units" />
+                <StatCard icon="⭐️" label="Global Score" value={safeTotalScore.toLocaleString()} unit="XP" />
             </motion.div>
 
             <div className="grid md:grid-cols-3 gap-6">
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.98 }}
+                    initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.2 }}
                     className="md:col-span-1 glass p-8 space-y-6"
@@ -54,19 +113,25 @@ export default function StatsPage() {
                     <div className="space-y-4">
                         <SmallStat label="Active Days" value={daysPlayed} />
                         <SmallStat label="Avg Load/Day" value={daysPlayed > 0 ? (totalPuzzles / daysPlayed).toFixed(1) : '0.0'} />
-                        <SmallStat label="Avg Efficiency" value={totalPuzzles > 0 ? Math.round(totalScore / totalPuzzles) : 0} />
-                        <SmallStat label="Sync Rate" value={`${daysPlayed > 0 ? Math.round((totalPuzzles / (daysPlayed * 5)) * 100) : 0}%`} />
+                        <SmallStat label="Avg Efficiency" value={totalPuzzles > 0 ? Math.round(safeTotalScore / totalPuzzles) : 0} />
+                        <SmallStat label="Sync Rate" value={`${syncRate}%`} />
                     </div>
                 </motion.div>
 
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.98 }}
+                    initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.3 }}
-                    className="md:col-span-2 glass p-8 overflow-hidden"
+                    className="md:col-span-2 space-y-6"
                 >
-                    <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-6">Neural Activity Heatmap</h3>
-                    <StreakHeatmap days={365} />
+                    <div className="glass p-8 overflow-hidden">
+                        <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-6">Activity Heatmap</h3>
+                        <HeatmapContainer />
+                    </div>
+
+                    <div className="glass p-8 overflow-hidden">
+                        <BadgeList />
+                    </div>
                 </motion.div>
             </div>
         </div>

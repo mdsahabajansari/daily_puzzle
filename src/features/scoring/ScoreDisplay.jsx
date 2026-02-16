@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-export default function ScoreDisplay({ result, onNext }) {
+export default function ScoreDisplay({ result, onNext, onMenu }) {
     // Defensive check to prevent black screen if result is missing/malformed
     if (!result) return (
         <div className="glass p-10 text-center text-slate-500 italic">
@@ -63,15 +63,26 @@ export default function ScoreDisplay({ result, onNext }) {
                     <StatCard label="Hints" value={result.hintsUsed > 0 ? `${result.hintsUsed} Used` : 'Zero'} icon="💡" />
                 </div>
 
-                <motion.button
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={onNext}
-                    className="btn-primary w-full flex items-center justify-center gap-4 text-xl"
-                >
-                    <span>CONTINUE</span>
-                    <span className="opacity-70">→</span>
-                </motion.button>
+                <div className="space-y-4">
+                    <motion.button
+                        whileHover={{ scale: 1.02, y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={onNext}
+                        className="btn-primary w-full flex items-center justify-center gap-4 text-xl"
+                    >
+                        <span>NEXT CHALLENGE</span>
+                        <span className="opacity-70">🎮</span>
+                    </motion.button>
+
+                    {onMenu && (
+                        <button
+                            onClick={onMenu}
+                            className="w-full py-4 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 hover:text-brand-400 transition-colors"
+                        >
+                            Back to Selection List
+                        </button>
+                    )}
+                </div>
             </div>
         </motion.div>
     );

@@ -4,6 +4,11 @@ import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
 export default defineConfig({
+    server: {
+        headers: {
+            'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+        },
+    },
     plugins: [
         react(),
         VitePWA({
@@ -13,7 +18,7 @@ export default defineConfig({
                 name: 'Daily Puzzle — Logic Game',
                 short_name: 'DailyPuzzle',
                 description: 'A daily logic puzzle game with streaks, scoring, and offline play',
-                theme_color: '#6366f1',
+                theme_color: '#525CEB',
                 background_color: '#0f172a',
                 display: 'standalone',
                 start_url: '/',

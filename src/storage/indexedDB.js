@@ -5,7 +5,7 @@
 import { openDB } from 'idb';
 
 const DB_NAME = 'daily-puzzle-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Bumped to trigger upgrade
 
 /** Cached DB instance */
 let dbInstance = null;
@@ -29,6 +29,14 @@ async function getDB() {
             }
             if (!db.objectStoreNames.contains('settings')) {
                 db.createObjectStore('settings', { keyPath: 'key' });
+            }
+            // New store for detailed daily activity
+            if (!db.objectStoreNames.contains('dailyActivity')) {
+                db.createObjectStore('dailyActivity', { keyPath: 'date' });
+            }
+            // New store for achievements
+            if (!db.objectStoreNames.contains('achievements')) {
+                db.createObjectStore('achievements', { keyPath: 'id' });
             }
         },
     });
@@ -77,3 +85,5 @@ export const puzzleStorage = createStore('puzzles');
 export const progressStorage = createStore('progress');
 export const streakStorage = createStore('streaks');
 export const settingsStorage = createStore('settings');
+export const activityStorage = createStore('dailyActivity');
+export const achievementsStorage = createStore('achievements');

@@ -1,5 +1,5 @@
 /* ==========================================
-   Global Styles & Premium UI Tokens
+   Global Styles & Bluestock Brand Tokens
    ========================================== */
 
 @tailwind base;
@@ -15,9 +15,9 @@
     @apply bg-slate-950 text-slate-100 font-sans selection:bg-brand-500/30 selection:text-brand-200;
     overscroll-behavior: none;
     background-image:
-      radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.15) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(147, 51, 234, 0.1) 0px, transparent 50%),
-      radial-gradient(at 50% 100%, rgba(79, 70, 229, 0.05) 0px, transparent 50%);
+      radial-gradient(at 0% 0%, rgba(82, 92, 235, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(25, 4, 130, 0.12) 0px, transparent 50%),
+      radial-gradient(at 50% 100%, rgba(82, 92, 235, 0.05) 0px, transparent 50%);
     background-attachment: fixed;
   }
 
@@ -55,27 +55,27 @@
     @apply glass transition-all duration-500 hover:bg-white/[0.06] hover:border-white/20 hover:-translate-y-1 hover:shadow-brand-500/10;
   }
 
-  /* Vibrant Gradients */
+  /* Vibrant Gradients — Bluestock brand */
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-br from-brand-300 via-brand-500 to-purple-500 animate-gradient-flow;
+    @apply bg-clip-text text-transparent bg-gradient-to-br from-brand-200 via-brand-400 to-brand-800 animate-gradient-flow;
     background-size: 200% 200%;
   }
 
   .bg-gradient-brand {
-    @apply bg-gradient-to-br from-brand-500 to-purple-600;
+    @apply bg-gradient-to-br from-brand-500 to-brand-800;
   }
 
   /* Interactive Elements */
   .btn-primary {
-    @apply bg-brand-600 text-white font-bold py-3.5 px-6 rounded-2xl transition-all duration-300 hover:bg-brand-500 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-brand-600/20 hover:shadow-brand-500/40;
+    @apply bg-brand-500 text-white font-bold py-3.5 px-6 rounded-2xl transition-all duration-300 hover:bg-brand-600 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-brand-500/20 hover:shadow-brand-600/40;
   }
 
   .glow {
-    box-shadow: 0 0 30px rgba(79, 70, 229, 0.3);
+    box-shadow: 0 0 30px rgba(82, 92, 235, 0.3);
   }
 
   .glow-sm {
-    box-shadow: 0 0 15px rgba(79, 70, 229, 0.2);
+    box-shadow: 0 0 15px rgba(82, 92, 235, 0.2);
   }
 
   /* Mesh Background Overlay */
@@ -86,7 +86,7 @@
     width: 200%;
     height: 200%;
     z-index: -1;
-    background: radial-gradient(circle at 50% 50%, rgba(79, 70, 229, 0.05), transparent 40%);
+    background: radial-gradient(circle at 50% 50%, rgba(82, 92, 235, 0.05), transparent 40%);
     animation: rotate 20s linear infinite;
   }
 

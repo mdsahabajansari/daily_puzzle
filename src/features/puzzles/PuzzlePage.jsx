@@ -2,7 +2,8 @@
  * PuzzlePage.jsx — Main gameplay page
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getTodayPuzzles, submitAnswer, getPuzzleProgress } from '@/engine/puzzleEngine';
 import { getTodayDateStr } from '@/engine/generator';
@@ -29,14 +30,18 @@ const TYPE_LABELS = {
     memory: 'Memory',
 };
 
+const PUZZLE_TYPES = ['logic', 'math', 'pattern', 'sequence', 'memory'];
+
 export default function PuzzlePage() {
+    const navigate = useNavigate();
     const [puzzles, setPuzzles] = useState([]);
     const [activeType, setActiveType] = useState('logic');
     const [completedPuzzles, setCompletedPuzzles] = useState(new Set());
     const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const { initialize: initStreak, recordCompletion: recordStreakCompletion } = useStreakStore();
+    const initStreak = useStreakStore((s) => s.initialize);
+    const recordStreakCompletion = useStreakStore((s) => s.recordCompletion);
     const { recordScore, loadTodayScores } = useScoreStore();
 
     useEffect(() => {
@@ -45,85 +50,102 @@ export default function PuzzlePage() {
                 const todayPuzzles = await getTodayPuzzles();
                 setPuzzles(todayPuzzles);
 
-                const done = new Set();
+                const doneSet = new Set();
                 for (const p of todayPuzzles) {
                     const progress = await getPuzzleProgress(p.id);
-                    if (progress?.completed) done.add(p.id);
+                    if (progress?.completed) doneSet.add(p.id);
                 }
-                setCompletedPuzzles(done);
+                setCompletedPuzzles(doneSet);
 
                 await initStreak();
                 await loadTodayScores(getTodayDateStr());
             } catch (error) {
-                console.error('Failed to load puzzles:', error);
+                console.error('PuzzlePage: load failed', error);
             } finally {
                 setLoading(false);
             }
         }
         load();
-    }, [initStreak, loadTodayScores]);
+    }, []); // initStreak and loadTodayScores are stable Zustand refs
+
+    const activePuzzle = useMemo(() => puzzles.find((p) => p.type === activeType), [puzzles, activeType]);
+    const allCompleted = useMemo(() => puzzles.length > 0 && puzzles.every((p) => completedPuzzles.has(p.id)), [puzzles, completedPuzzles]);
 
     const handleSubmit = useCallback(
         async (puzzle, answer, timeTaken, hintsUsed) => {
-            const validationResult = await submitAnswer(puzzle, {
-                puzzleId: puzzle.id,
-                answer,
-                timeTaken,
-                hintsUsed,
-            });
-
-            setResult(validationResult);
-
-            if (validationResult.correct) {
-                setCompletedPuzzles((prev) => new Set([...prev, puzzle.id]));
-                recordScore(puzzle.id, validationResult.score);
-                await recordStreakCompletion(validationResult.score);
-                await recordCompletion();
-
-                track('puzzle_completed', {
-                    puzzleType: puzzle.type,
-                    score: validationResult.score,
+            try {
+                const validationResult = await submitAnswer(puzzle, {
+                    puzzleId: puzzle.id,
+                    answer,
                     timeTaken,
                     hintsUsed,
-                    difficulty: puzzle.difficulty,
                 });
+
+                if (validationResult.correct) {
+                    const newSet = new Set(completedPuzzles);
+                    newSet.add(puzzle.id);
+                    setCompletedPuzzles(newSet);
+
+                    recordScore(puzzle.id, validationResult.score);
+                    await recordStreakCompletion({
+                        score: validationResult.score || 0,
+                        timeTaken: timeTaken || 0,
+                        difficulty: puzzle.difficulty || 1,
+                    });
+                    await recordCompletion();
+
+                    track('puzzle_completed', {
+                        puzzleType: puzzle.type,
+                        score: validationResult.score,
+                    });
+                }
+
+                setResult(validationResult);
+            } catch (err) {
+                console.error('Submit failed:', err);
             }
         },
-        [recordScore, recordStreakCompletion],
+        [completedPuzzles, recordScore, recordStreakCompletion]
     );
+
+    const handleMenu = useCallback(() => {
+        setResult(null);
+    }, []);
 
     const handleNextPuzzle = useCallback(() => {
         setResult(null);
-        const types = ['logic', 'math', 'pattern', 'sequence', 'memory'];
-        const currentIdx = types.indexOf(activeType);
-        for (let i = 1; i <= 5; i++) {
-            const nextType = types[(currentIdx + i) % 5];
+
+        // Find next uncompleted puzzle starting from current
+        const currentIdx = PUZZLE_TYPES.indexOf(activeType);
+
+        for (let i = 1; i < 5; i++) {
+            const nextType = PUZZLE_TYPES[(currentIdx + i) % 5];
             const nextPuzzle = puzzles.find((p) => p.type === nextType);
             if (nextPuzzle && !completedPuzzles.has(nextPuzzle.id)) {
                 setActiveType(nextType);
                 return;
             }
         }
-    }, [activeType, puzzles, completedPuzzles]);
 
-    const activePuzzle = puzzles.find((p) => p.type === activeType);
-    const allCompleted = puzzles.length > 0 && puzzles.every((p) => completedPuzzles.has(p.id));
+        // Final check: if the CURRENT one is now completed and we found no others
+        const currentPuzzle = puzzles.find((p) => p.type === activeType);
+        if (currentPuzzle && completedPuzzles.has(currentPuzzle.id)) {
+            navigate('/stats');
+        }
+    }, [activeType, puzzles, completedPuzzles, navigate]);
 
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
                 <motion.div
-                    animate={{
-                        scale: [1, 1.2, 1],
-                        rotate: [0, 180, 360],
-                    }}
-                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                    animate={{ rotate: 360, opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 2, repeat: Infinity }}
                     className="text-6xl"
                 >
                     🧩
                 </motion.div>
                 <div className="text-slate-500 font-mono text-xs uppercase tracking-widest animate-pulse">
-                    Generating Puzzles...
+                    Synching Neural Network...
                 </div>
             </div>
         );
@@ -131,25 +153,23 @@ export default function PuzzlePage() {
 
     return (
         <div className="space-y-8 max-w-2xl mx-auto">
-            {/* Header section */}
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <header className="flex items-end justify-between">
                 <div>
                     <h2 className="text-3xl font-black tracking-tight text-white">CHALLENGES</h2>
-                    <p className="text-slate-400 text-xs font-mono uppercase tracking-[0.2em] mt-1">
-                        {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                    <p className="text-slate-400 text-[10px] font-mono uppercase tracking-[0.3em] mt-1">
+                        Deployment Phase {new Date().getDate()}
                     </p>
                 </div>
                 {allCompleted && (
-                    <div className="px-4 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center gap-2">
-                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                        <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">All Clear</span>
+                    <div className="px-3 py-1 bg-brand-500/10 border border-brand-500/20 rounded-full flex items-center gap-2">
+                        <span className="w-2 h-2 bg-brand-500 rounded-full animate-pulse" />
+                        <span className="text-[10px] font-black text-brand-400 uppercase tracking-widest">All Clear</span>
                     </div>
                 )}
             </header>
 
-            {/* Segmented control for types */}
             <div className="p-1.5 bg-white/5 backdrop-blur-md rounded-2xl border border-white/5 flex gap-1 overflow-x-auto no-scrollbar">
-                {['logic', 'math', 'pattern', 'sequence', 'memory'].map((type) => {
+                {PUZZLE_TYPES.map((type) => {
                     const puzzle = puzzles.find((p) => p.type === type);
                     const isCompleted = puzzle ? completedPuzzles.has(puzzle.id) : false;
                     const isActive = type === activeType;
@@ -161,7 +181,7 @@ export default function PuzzlePage() {
                             className={`relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap ${isActive
                                 ? 'text-white'
                                 : isCompleted
-                                    ? 'text-emerald-400 hover:text-emerald-300'
+                                    ? 'text-brand-400 hover:text-brand-300'
                                     : 'text-slate-500 hover:text-slate-300'
                                 }`}
                         >
@@ -183,13 +203,14 @@ export default function PuzzlePage() {
                 {result ? (
                     <motion.div
                         key="result"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
                     >
                         <ScoreDisplay
                             result={result}
                             onNext={handleNextPuzzle}
+                            onMenu={handleMenu}
                         />
                     </motion.div>
                 ) : activePuzzle ? (
@@ -201,7 +222,6 @@ export default function PuzzlePage() {
                     >
                         <PuzzleCard
                             puzzle={activePuzzle}
-                            completed={completedPuzzles.has(activePuzzle.id)}
                             onSubmit={handleSubmit}
                         />
                     </motion.div>

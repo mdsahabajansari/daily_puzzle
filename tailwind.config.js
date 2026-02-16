@@ -5,21 +5,24 @@ export default {
         extend: {
             colors: {
                 brand: {
-                    50: '#f5f7ff',
-                    100: '#ebf0fe',
-                    200: '#ced9fd',
-                    300: '#a1b5fa',
-                    400: '#708cf6',
-                    500: '#4f46e5',
-                    600: '#4338ca',
-                    700: '#3730a3',
-                    800: '#2e2984',
-                    900: '#2a276d',
-                    950: '#19173d',
+                    50: '#F8EDFF',   // Lavender
+                    100: '#DDF2FD',  // Light blue
+                    200: '#C2D9FF',  // Soft blue
+                    300: '#BFCFE7',  // Gray-blue
+                    400: '#525CEB',  // Medium blue — primary accent
+                    500: '#525CEB',  // Primary brand blue
+                    600: '#3a44d4',  // Darker brand blue
+                    700: '#2a32b0',  // Deep blue
+                    800: '#190482',  // Dark navy
+                    900: '#120360',  // Deepest navy
+                    950: '#0c0240',  // Near-black navy
+                },
+                surface: {
+                    dark: '#3D3B40',   // Charcoal
                 },
             },
             fontFamily: {
-                sans: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
+                sans: ['Poppins', 'Open Sans', 'system-ui', 'sans-serif'],
                 mono: ['JetBrains Mono', 'monospace'],
             },
             animation: {

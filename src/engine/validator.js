@@ -6,12 +6,13 @@
  * Validate a player's answer for a given puzzle.
  */
 export function validateAnswer(puzzle, input) {
-    const isCorrect = checkAnswer(puzzle.data, input.answer);
+    const isCorrect = checkAnswer(puzzle.type, puzzle.data, input.answer);
 
     if (!isCorrect) {
         return {
             correct: false,
             score: 0,
+            rating: 'F',
             timeTaken: input.timeTaken,
             hintsUsed: input.hintsUsed,
             feedback: `Incorrect! The answer was ${puzzle.solution}.`,
@@ -24,9 +25,14 @@ export function validateAnswer(puzzle, input) {
     const hintPenalty = Math.round(input.hintsUsed * 0.15 * baseScore);
     const finalScore = Math.max(10, baseScore + speedBonus - hintPenalty);
 
+    // Calculate rating
+    const scoreRatio = finalScore / puzzle.maxScore;
+    const rating = scoreRatio >= 1.2 ? 'S' : scoreRatio >= 1.0 ? 'A' : scoreRatio >= 0.8 ? 'B' : scoreRatio >= 0.6 ? 'C' : 'D';
+
     return {
         correct: true,
         score: finalScore,
+        rating,
         timeTaken: input.timeTaken,
         hintsUsed: input.hintsUsed,
         feedback: getPositiveFeedback(finalScore, puzzle.maxScore),
@@ -36,8 +42,8 @@ export function validateAnswer(puzzle, input) {
 /**
  * Check if an answer is correct based on puzzle type.
  */
-function checkAnswer(data, answer) {
-    switch (data.type) {
+function checkAnswer(type, data, answer) {
+    switch (type) {
         case 'logic':
             return (
                 data.options[data.correctIndex] === String(answer) ||
